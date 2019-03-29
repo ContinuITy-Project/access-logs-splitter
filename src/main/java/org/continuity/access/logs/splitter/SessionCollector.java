@@ -81,16 +81,16 @@ public class SessionCollector implements Runnable {
 
 		long delay = lastEntry == null ? 0 : logEntry.getTimestamp().getTime() - lastEntry.getTimestamp().getTime();
 
-		if (lastEntry != null) {
+		if ((lastEntry != null) && (delay <= MAX_DELAY_IN_SESSION)) {
 			lastEntry.setDelay(delay);
 		}
+
+		writeLastEntry();
 
 		if (delay > MAX_DELAY_IN_SESSION) {
 			finishFile();
 			initFile();
 		}
-
-		writeLastEntry();
 
 		lastEntry = logEntry;
 	}
