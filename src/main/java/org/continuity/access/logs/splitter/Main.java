@@ -7,6 +7,9 @@ import java.text.ParseException;
 import java.util.Date;
 
 import org.apache.commons.lang3.time.DateUtils;
+import org.continuity.idpa.annotation.ApplicationAnnotation;
+import org.continuity.idpa.application.Application;
+import org.continuity.idpa.serialization.yaml.IdpaYamlSerializer;
 
 public class Main {
 
@@ -18,7 +21,24 @@ public class Main {
 		Path pathToLogs = Paths.get(args[0]);
 		Path outputDir = Paths.get(args[1]);
 
-		AccessLogsSplitter splitter = new AccessLogsSplitter(pathToLogs, outputDir);
+		AccessLogsSplitter splitter;
+		AccessLogsAnnotator annotator;
+
+		if (args.length >= 5) {
+			Application application = new IdpaYamlSerializer<>(Application.class).readFromYaml(args[3]);
+			ApplicationAnnotation annotation = new IdpaYamlSerializer<>(ApplicationAnnotation.class).readFromYaml(args[4]);
+			annotator = new AccessLogsAnnotator(application, annotation);
+		} else {
+			annotator = AccessLogsAnnotator.NOOP;
+		}
+
+		if (args.length >= 3) {
+			Path pathToIgnored = Paths.get(args[2]);
+			splitter = new AccessLogsSplitter(pathToLogs, outputDir, annotator, pathToIgnored);
+		} else {
+			splitter = new AccessLogsSplitter(pathToLogs, outputDir, annotator);
+		}
+
 		splitter.parseAndSplit();
 	}
 

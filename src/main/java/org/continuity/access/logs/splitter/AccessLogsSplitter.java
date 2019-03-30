@@ -5,12 +5,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,22 +29,37 @@ public class AccessLogsSplitter {
 
 	private final Path pathToLogs;
 
+	private final Path pathToIgnored;
+
 	private final Path outputDir;
 
-	private final AtomicInteger sessionCounter = new AtomicInteger(1);
+	private final AccessLogsAnnotator annotator;
 
 	private final Map<String, SessionCollector> collectorPerThread = new ConcurrentHashMap<>();
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
-	public AccessLogsSplitter(Path pathToLogs, Path outputDir) {
+	private List<String> ignoredEndpoints = Collections.emptyList();
+
+	public AccessLogsSplitter(Path pathToLogs, Path outputDir, AccessLogsAnnotator annotator, Path pathToIgnored) {
 		this.pathToLogs = pathToLogs;
 		this.outputDir = outputDir;
+		this.pathToIgnored = pathToIgnored;
+		this.annotator = annotator;
+	}
+
+	public AccessLogsSplitter(Path pathToLogs, Path outputDir, AccessLogsAnnotator annotator) {
+		this(pathToLogs, outputDir, annotator, null);
 	}
 
 	public void parseAndSplit() throws IOException, InterruptedException {
 		LOGGER.info("Parsing access logs {}", pathToLogs);
 		LOGGER.info("Writing sessions to {}", outputDir);
+
+		if (pathToIgnored != null) {
+			LOGGER.info("Reading ignored endpoints from {}", pathToIgnored);
+			initIgnoredEndoints();
+		}
 
 		outputDir.toFile().mkdirs();
 
@@ -64,7 +80,9 @@ public class AccessLogsSplitter {
 				LOGGER.error("Cannot parse line {}", line);
 			}
 
-			collectorForThread(logEntry.getThreadId()).offer(logEntry);
+			if (!isIgnored(logEntry)) {
+				collectorForThread(logEntry.getThreadId()).offer(logEntry);
+			}
 
 			line = reader.readLine();
 		}
@@ -79,12 +97,20 @@ public class AccessLogsSplitter {
 		SessionCollector collector = collectorPerThread.get(threadId);
 
 		if (collector == null) {
-			collector = new SessionCollector(threadId, sessionCounter, outputDir);
+			collector = new SessionCollector(threadId, outputDir, annotator);
 			collectorPerThread.put(threadId, collector);
 			threadPool.execute(collector);
 		}
 
 		return collector;
+	}
+
+	private void initIgnoredEndoints() throws IOException {
+		this.ignoredEndpoints = Files.readAllLines(pathToIgnored);
+	}
+
+	private boolean isIgnored(AccessLogEntry logEntry) {
+		return ignoredEndpoints.contains(new StringBuilder().append(logEntry.getRequestMethod()).append(" ").append(logEntry.getPath()).toString());
 	}
 
 }

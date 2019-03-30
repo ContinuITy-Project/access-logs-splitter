@@ -8,7 +8,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Date;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +20,8 @@ public class SessionCollector implements Runnable {
 
 	private static final long MAX_DELAY_IN_SESSION = 30 * 60 * 1000;
 
+	private static final long WAIT_TIME_BETWEEN_SESSIONS = 30 * 1000;
+
 	private static final String FILENAME_PREFIX = "session-";
 
 	private static final String FILENAME_EXT = ".csv";
@@ -29,18 +30,20 @@ public class SessionCollector implements Runnable {
 
 	private final String threadId;
 
-	private final AtomicInteger sessionCounter;
-
 	private final Path outputDir;
+
+	private final AccessLogsAnnotator annotator;
 
 	private AccessLogEntry lastEntry;
 
 	private BufferedWriter writer;
 
-	public SessionCollector(String threadId, AtomicInteger sessionCounter, Path outputDir) {
+	private int sessionCounter = 1;
+
+	public SessionCollector(String threadId, Path outputDir, AccessLogsAnnotator annotator) {
 		this.threadId = threadId;
-		this.sessionCounter = sessionCounter;
 		this.outputDir = outputDir;
+		this.annotator = annotator;
 	}
 
 	public void offer(AccessLogEntry entry) {
@@ -68,10 +71,11 @@ public class SessionCollector implements Runnable {
 			if (STOP_ENTRY.equals(logEntry)) {
 				break;
 			} else {
-				processLogEntry(logEntry);
+				processLogEntry(annotator.annotateLogEntry(logEntry));
 			}
 		}
 
+		lastEntry.setDelay(WAIT_TIME_BETWEEN_SESSIONS);
 		writeLastEntry();
 		finishFile();
 	}
@@ -81,8 +85,8 @@ public class SessionCollector implements Runnable {
 
 		long delay = lastEntry == null ? 0 : logEntry.getTimestamp().getTime() - lastEntry.getTimestamp().getTime();
 
-		if ((lastEntry != null) && (delay <= MAX_DELAY_IN_SESSION)) {
-			lastEntry.setDelay(delay);
+		if ((lastEntry != null)) {
+			lastEntry.setDelay(Math.min(delay, WAIT_TIME_BETWEEN_SESSIONS));
 		}
 
 		writeLastEntry();
@@ -96,7 +100,7 @@ public class SessionCollector implements Runnable {
 	}
 
 	private void initFile() {
-		String filename = FILENAME_PREFIX + sessionCounter.getAndIncrement() + FILENAME_EXT;
+		String filename = new StringBuilder().append(FILENAME_PREFIX).append(threadId.hashCode()).append("-").append(sessionCounter++).append(FILENAME_EXT).toString();
 
 		LOGGER.info("Writing session of thread {} to {}", threadId, filename);
 

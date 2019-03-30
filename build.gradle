@@ -23,4 +23,17 @@ repositories {
 dependencies {
 	compile("org.springframework.boot:spring-boot-starter-logging")
 	compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.8.1'
+	
+	compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.9.1'
+	compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.1'
+	compile group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.9.1'
+	
+	// TODO: Quick fix. To be replaced with dependencies
+	dependencies {
+    	compile fileTree(dir: 'libs', include: '*.jar')
+	}
+		
+	testCompile 'junit:junit:4.12'
+	testCompile("org.mockito:mockito-core:2.13.0")
+	testCompile ("org.assertj:assertj-core:3.8.0")
 }

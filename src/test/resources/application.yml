@@ -1,0 +1,12 @@
+&test
+endpoints:
+- !<http>
+  &foo path: /foo/{bar}/{rest:*}
+  method: GET
+  parameters:
+  - &foo_bar name: bar
+    parameter-type: URL_PART
+  - &foo_rest name: rest
+    parameter-type: URL_PART
+  - &foo_id name: id
+    parameter-type: REQ_PARAM

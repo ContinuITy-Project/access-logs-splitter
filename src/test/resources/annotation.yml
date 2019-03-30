@@ -1,0 +1,18 @@
+inputs:
+- !<direct>
+  &Input_bar data: [ BAR, BAZ ]
+- !<csv>
+  file: data.csv
+  columns:
+  - &Input_rest
+  - &Input_id
+
+endpoint-annotations:
+- endpoint: foo
+  parameter-annotations:
+  - parameter: foo_bar
+    input: *Input_bar
+  - parameter: foo_rest
+    input: *Input_rest
+  - parameter: foo_id
+    input: *Input_id
