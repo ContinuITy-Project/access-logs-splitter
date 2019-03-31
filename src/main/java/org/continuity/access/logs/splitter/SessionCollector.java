@@ -6,8 +6,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Date;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +29,8 @@ public class SessionCollector implements Runnable {
 
 	private static final String FILENAME_EXT = ".csv";
 
+	private static final Set<String> POST_PUT = Stream.of("POST", "PUT").collect(Collectors.toSet());
+
 	private final BlockingQueue<AccessLogEntry> queue = new LinkedBlockingQueue<>();
 
 	private final String threadId;
@@ -37,6 +42,8 @@ public class SessionCollector implements Runnable {
 	private AccessLogEntry lastEntry;
 
 	private BufferedWriter writer;
+
+	private String filename;
 
 	private int sessionCounter = 1;
 
@@ -100,7 +107,7 @@ public class SessionCollector implements Runnable {
 	}
 
 	private void initFile() {
-		String filename = new StringBuilder().append(FILENAME_PREFIX).append(threadId.hashCode()).append("-").append(sessionCounter++).append(FILENAME_EXT).toString();
+		filename = new StringBuilder().append(FILENAME_PREFIX).append(threadId.hashCode()).append("-").append(sessionCounter++).append(FILENAME_EXT).toString();
 
 		LOGGER.info("Writing session of thread {} to {}", threadId, filename);
 
@@ -128,6 +135,10 @@ public class SessionCollector implements Runnable {
 
 	private void writeLastEntry() {
 		if (lastEntry != null) {
+			if (POST_PUT.contains(lastEntry.getRequestMethod())) {
+				LOGGER.info("{} {} is contained in {}.", lastEntry.getRequestMethod(), lastEntry.getPath(), filename);
+			}
+
 			try {
 				writer.write(lastEntry.toString());
 				writer.newLine();

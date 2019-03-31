@@ -3,6 +3,7 @@ package org.continuity.access.logs.splitter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -27,6 +28,14 @@ public class AccessLogsAnnotator {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AccessLogsAnnotator.class);
 
 	private static final Pattern PATTERN_URL_PART_PARAM = Pattern.compile("\\{([^{]*)\\}");
+
+	private static final String APPLICATION_JSON = "application/json";
+
+	private static final String MULTIPART_BOUNDARY = "XXXXXXXXXXXXX";
+
+	private static final String MULTIPART_FORM_DATA = "multipart/form-data; boundary=" + MULTIPART_BOUNDARY;
+
+	private static final String NEWLINE = "\\r\\n";
 
 	private final ApplicationAnnotation annotation;
 
@@ -76,6 +85,7 @@ public class AccessLogsAnnotator {
 		}
 
 		AccessLogEntry newEntry = new AccessLogEntry(logEntry.getThreadId(), logEntry.getTimestamp(), logEntry.getRequestMethod(), newPath.toString());
+		addBodyIfPresent(newEntry, endpoint, inputStringPerParam);
 		newEntry.setDelay(logEntry.getDelay());
 
 		return newEntry;
@@ -114,6 +124,35 @@ public class AccessLogsAnnotator {
 				.collect(Collectors.joining("&"));
 	}
 
+	private void addBodyIfPresent(AccessLogEntry logEntry, HttpEndpoint endpoint, Map<String, String> inputStringPerParam) {
+		Optional<String> bodyParam = endpoint.getParameters().stream().filter(p -> p.getParameterType() == HttpParameterType.BODY).map(HttpParameter::getName).findFirst();
+		List<String> formParams = endpoint.getParameters().stream().filter(p -> p.getParameterType() == HttpParameterType.FORM).map(HttpParameter::getName).collect(Collectors.toList());
+
+		if (bodyParam.isPresent()) {
+			logEntry.setBody(inputStringPerParam.get(bodyParam.get()).replace("\"", "\"\""));
+			logEntry.setContentType(APPLICATION_JSON);
+		} else if (!formParams.isEmpty()) {
+			logEntry.setBody(createFormBody(formParams, inputStringPerParam));
+			logEntry.setContentType(MULTIPART_FORM_DATA);
+		}
+	}
+
+	private String createFormBody(List<String> formParams, Map<String, String> inputStringPerParam) {
+		StringBuilder body = new StringBuilder();
+
+		for (String formParam : formParams) {
+			body.append("--").append(MULTIPART_BOUNDARY).append(NEWLINE);
+			body.append("Content-Disposition: form-data; name=\"\"").append(formParam).append("\"\"").append(NEWLINE);
+			body.append("Content-Type: text/plain; charset=US-ASCII").append(NEWLINE);
+			body.append("Content-Transfer-Encoding: 8bit").append(NEWLINE).append(NEWLINE);
+			body.append(inputStringPerParam.get(formParam)).append(NEWLINE);
+		}
+
+		body.append("--").append(MULTIPART_BOUNDARY).append("--");
+
+		return body.toString();
+	}
+
 	private Map<String, String> getInputStringPerParam(EndpointAnnotation endpointAnnotation) {
 		return endpointAnnotation.getParameterAnnotations().stream()
 				.map(ann -> Pair.of(parameterNameFromAnnotation(ann), inputFormatter.getInputString(ann.getInput())))
@@ -123,8 +162,6 @@ public class AccessLogsAnnotator {
 	private String parameterNameFromAnnotation(ParameterAnnotation ann) {
 		return ((HttpParameter) ann.getAnnotatedParameter().getReferred()).getName();
 	}
-
-	// TODO: request body
 
 	private static class Noop extends AccessLogsAnnotator {
 
