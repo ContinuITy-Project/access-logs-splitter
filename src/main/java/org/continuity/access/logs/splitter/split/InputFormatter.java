@@ -1,4 +1,4 @@
-package org.continuity.access.logs.splitter;
+package org.continuity.access.logs.splitter.split;
 
 import java.util.Map;
 import java.util.regex.Matcher;

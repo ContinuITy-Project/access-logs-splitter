@@ -1,4 +1,4 @@
-package org.continuity.access.logs.splitter;
+package org.continuity.access.logs.splitter.split;
 
 import java.util.List;
 import java.util.Map;
@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.continuity.access.logs.splitter.AccessLogEntry;
 import org.continuity.commons.idpa.RequestUriMapper;
 import org.continuity.idpa.annotation.ApplicationAnnotation;
 import org.continuity.idpa.annotation.EndpointAnnotation;

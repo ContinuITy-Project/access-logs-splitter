@@ -3,10 +3,11 @@ package org.continuity.access.logs.splitter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.ParseException;
-import java.util.Date;
+import java.util.Arrays;
 
-import org.apache.commons.lang3.time.DateUtils;
+import org.continuity.access.logs.splitter.combine.SessionsCombiner;
+import org.continuity.access.logs.splitter.split.AccessLogsAnnotator;
+import org.continuity.access.logs.splitter.split.AccessLogsSplitter;
 import org.continuity.idpa.annotation.ApplicationAnnotation;
 import org.continuity.idpa.application.Application;
 import org.continuity.idpa.serialization.yaml.IdpaYamlSerializer;
@@ -14,8 +15,21 @@ import org.continuity.idpa.serialization.yaml.IdpaYamlSerializer;
 public class Main {
 
 	public static void main(String[] args) throws IOException, InterruptedException {
+		switch (args[0]) {
+		case "split":
+			splitMain(Arrays.copyOfRange(args, 1, args.length));
+			break;
+		case "combine":
+			combineMain(Arrays.copyOfRange(args, 1, args.length));
+			break;
+		default:
+			throw new IllegalArgumentException("Unknown command " + args[0]);
+		}
+	}
+
+	private static void splitMain(String[] args) throws IOException, InterruptedException {
 		if (args.length < 2) {
-			throw new IllegalArgumentException("The first two arguments need to be the path to the access logs file and the output directory!");
+			throw new IllegalArgumentException("The first two arguments after the command need to be the path to the access logs file and the output directory!");
 		}
 
 		Path pathToLogs = Paths.get(args[0]);
@@ -42,10 +56,19 @@ public class Main {
 		splitter.parseAndSplit();
 	}
 
-	public static void main2(String[] args) throws ParseException {
-		Date timestamp = DateUtils.parseDate("05/Nov/2018:08:05:22 +0100", "dd/MMM/yyyy:HH:mm:ss Z");
+	private static void combineMain(String[] args) throws InterruptedException {
+		if (args.length < 4) {
+			throw new IllegalArgumentException(
+					"The first four arguments after the command need to be the path to the sessions CSV files, the output directory, the number of parallel sessions, and the number of iterations!");
+		}
 
-		System.out.println(timestamp);
+		Path pathToSessions = Paths.get(args[0]);
+		Path outputDir = Paths.get(args[1]);
+		int numSessions = Integer.parseInt(args[2]);
+		int numIterations = Integer.parseInt(args[3]);
+
+		SessionsCombiner combiner = new SessionsCombiner(pathToSessions, outputDir, numSessions, numIterations);
+		combiner.combine();
 	}
 
 }

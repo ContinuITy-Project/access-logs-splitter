@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.util.Date;
 
+import org.continuity.access.logs.splitter.split.AccessLogsAnnotator;
 import org.continuity.idpa.annotation.ApplicationAnnotation;
 import org.continuity.idpa.application.Application;
 import org.continuity.idpa.serialization.yaml.IdpaYamlSerializer;

@@ -1,4 +1,4 @@
-package org.continuity.access.logs.splitter;
+package org.continuity.access.logs.splitter.split;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.continuity.access.logs.splitter.AccessLogEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

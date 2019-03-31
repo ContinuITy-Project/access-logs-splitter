@@ -7,12 +7,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.time.DateUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AccessLogEntry {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(AccessLogEntry.class);
 
 	public static final String HEADER = "\"delay\",\"method\",\"request\",\"contenttype\",\"body\"";
 
 	private static final Pattern ACCESS_LOGS_PATTERN = Pattern.compile("(.*) - - \\[([^\\]]+)\\] \"([A-Z]+) ([^\"]+) .+\" .*");
+
+	private static final Pattern CSV_PATTERN = Pattern.compile("\"(.*)\",\"(.*)\",\"(.*)\",\"(.*)\",\"(.*)\"");
 
 	private static final String DELIMITER = ",";
 
@@ -46,6 +52,22 @@ public class AccessLogEntry {
 			Date timestamp = DateUtils.parseDateStrictly(matcher.group(2), Locale.ENGLISH, "dd/MMM/yyyy:HH:mm:ss Z");
 			return new AccessLogEntry(matcher.group(1), timestamp, matcher.group(3), matcher.group(4));
 		} else {
+			return null;
+		}
+	}
+
+	public static AccessLogEntry fromCsvLine(String line) {
+		Matcher matcher = CSV_PATTERN.matcher(line);
+
+		if (matcher.find()) {
+			AccessLogEntry entry = new AccessLogEntry(null, null, matcher.group(2), matcher.group(3));
+			entry.setDelay(Long.parseLong(matcher.group(1)));
+			entry.setContentType(matcher.group(4));
+			entry.setBody(matcher.group(5));
+
+			return entry;
+		} else {
+			LOGGER.error("Cannot parse CSV line {}!", line);
 			return null;
 		}
 	}
